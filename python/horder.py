@@ -1,13 +1,15 @@
 import os
+import sys 
+sys.path.append("..")
 import time
 import numpy as np
 import torch
 import torch.nn as nn
-from dataloader import *
+from tools.dataloader import *
 
-class SecondOrderConv(nn.Module):
+class HighOrderConv(nn.Module):
     def __init__(self):
-        super(SecondOrderConv, self).__init__()
+        super(HighOrderConv, self).__init__()
 
     def forward(self, x, filter):
         B, _, H, W = x.shape  # (B, C, H, W)
@@ -24,10 +26,10 @@ class SecondOrderConv(nn.Module):
 
         return Z
 
-class BaselineModule(nn.Module):
+class HighOrder(nn.Module):
     def __init__(self):
-        super(BaselineModule, self).__init__()
-        self.func = SecondOrderConv()
+        super(HighOrder, self).__init__()
+        self.func = HighOrderConv()
         self.conv = nn.Conv2d(in_channels=3, out_channels=25, kernel_size=5, padding=2, stride=1)
 
     def forward(self, x):
@@ -60,7 +62,7 @@ def loader_run(model, path, batch_size, num_workers, rounds):
             if (idx >= rounds):
                 break
 
-    print('Forward: {:.2f} ms | Backward {:.2f} ms'.format(forward * 1e3/rounds, backward * 1e6/rounds))
+    print('Forward: {:.2f} ms | Backward {:.2f} ms'.format(forward * 1e3/rounds, backward * 1e3/rounds))
 
 # run the module with fake tensor directly
 def no_loader_run(model, batch_size, rounds):
@@ -78,16 +80,16 @@ def no_loader_run(model, batch_size, rounds):
         out.sum().backward()
         backward += time.time() - start
 
-    print('Forward: {:.2f} ms | Backward {:.2f} ms'.format(forward * 1e3/rounds, backward * 1e6/rounds))
+    print('Forward: {:.2f} ms | Backward {:.2f} ms'.format(forward * 1e3/rounds, backward * 1e3/rounds))
 
 
 if __name__ == "__main__":
-    path = "./data/img_dict.npy"
-    batch_size = 8
-    num_workers = 8
-    rounds = 10
+    path = "../data/img_dict.npy"
+    batch_size = 1
+    num_workers = 1
+    rounds = 3
 
-    baseline = BaselineModule()
+    baseline = HighOrder()
 
     # run with data loader and batched real data
     loader_run(baseline, path, batch_size, num_workers, rounds)
