@@ -60,7 +60,7 @@ def loader_run(model, path, batch_size, num_workers, rounds):
             if (idx >= rounds):
                 break
 
-    print('Forward: {:.2f} us | Backward {:.2f} us'.format(forward * 1e6/rounds, backward * 1e6/rounds))
+    print('Forward: {:.2f} ms | Backward {:.2f} ms'.format(forward * 1e3/rounds, backward * 1e6/rounds))
 
 # run the module with fake tensor directly
 def no_loader_run(model, batch_size, rounds):
@@ -78,7 +78,7 @@ def no_loader_run(model, batch_size, rounds):
         out.sum().backward()
         backward += time.time() - start
 
-    print('Forward: {:.2f} us | Backward {:.2f} us'.format(forward * 1e6/rounds, backward * 1e6/rounds))
+    print('Forward: {:.2f} ms | Backward {:.2f} ms'.format(forward * 1e3/rounds, backward * 1e6/rounds))
 
 
 if __name__ == "__main__":
