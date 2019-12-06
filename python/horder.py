@@ -13,7 +13,6 @@ class HighOrderConv(nn.Module):
 
     def forward(self, x, filter):
         B, _, H, W = x.shape  # (B, C, H, W)
-        filter = filter.reshape(B, -1, 1, H, W).transpose(0,1)  # (kernel_size^2, B, 1, H, W)
         Z = torch.zeros_like(x)  # (B, C, H, W)
         k = 0
         x = torch.nn.ConstantPad2d((2, 2, 2, 2), 0)(x)  # (B, C, H+4, W+4)
@@ -29,13 +28,17 @@ class HighOrderConv(nn.Module):
 class HighOrder(nn.Module):
     def __init__(self):
         super(HighOrder, self).__init__()
-        self.func = HighOrderConv()
+        self.horder = HighOrderConv()
         self.conv = nn.Conv2d(in_channels=3, out_channels=25, kernel_size=5, padding=2, stride=1)
 
     def forward(self, x):
         res = x
         filter = self.conv(x)
-        x = self.func(x, filter)
+
+        B, _, H, W = x.shape  # (B, C, H, W)
+        filter = filter.reshape(B, -1, 1, H, W).transpose(0,1)  # (kernel_size^2, B, 1, H, W)
+
+        x = self.horder(x, filter)
         x += res
         return x
 
