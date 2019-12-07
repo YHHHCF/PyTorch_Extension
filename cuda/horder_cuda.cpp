@@ -3,7 +3,7 @@
 
 // CUDA forward declarations
 std::vector<torch::Tensor> horder_cuda_forward(
-    torch::Tensor input,
+    torch::Tensor x,
     torch::Tensor weights,
     int H,
     int W);
@@ -23,10 +23,10 @@ std::vector<torch::Tensor> horder_forward(
     torch::Tensor x,
     torch::Tensor weights,
     int H, int W) {
-  CHECK_INPUT(input);
+  CHECK_INPUT(x);
   CHECK_INPUT(weights);
 
-  return horder_cuda_forward(input, weights, H, W);
+  return horder_cuda_forward(x, weights, H, W);
 }
 
 std::vector<torch::Tensor> horder_backward(
