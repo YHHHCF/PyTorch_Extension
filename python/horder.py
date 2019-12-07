@@ -11,7 +11,7 @@ class HighOrderFunction(nn.Module):
     def __init__(self):
         super(HighOrderFunction, self).__init__()
 
-    def forward(self, x, filter):
+    def forward(self, x, weights):
         B, _, H, W = x.shape  # (B, C, H, W)
         Z = torch.zeros_like(x)  # (B, C, H, W)
         k = 0
@@ -20,7 +20,7 @@ class HighOrderFunction(nn.Module):
         for hh in range(5):
             for ww in range(5):
                 X_c = x[:, :, hh : H + hh, ww : W + ww] # (B, C, H, W)
-                Z += X_c * filter[k] # (B, 1, H, W) * (B, C, H, W)
+                Z += X_c * weights[k] # (B, 1, H, W) * (B, C, H, W)
                 k += 1
 
         return Z
@@ -33,12 +33,12 @@ class HighOrder(nn.Module):
 
     def forward(self, x):
         res = x
-        filter = self.conv(x)
+        weights = self.conv(x)
 
         B, _, H, W = x.shape  # (B, C, H, W)
-        filter = filter.reshape(B, -1, 1, H, W).transpose(0,1)  # (kernel_size^2, B, 1, H, W)
+        weights = weights.reshape(B, -1, 1, H, W).transpose(0,1)  # (kernel_size^2, B, 1, H, W)
 
-        x = self.horder(x, filter)
+        x = self.horder(x, weights)
         x += res
         return x
 
