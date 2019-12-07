@@ -26,7 +26,7 @@ std::vector<torch::Tensor> horder_forward(
   CHECK_INPUT(input);
   CHECK_INPUT(weights);
 
-  return lltm_cuda_forward(input, weights, H, W);
+  return horder_cuda_forward(input, weights, H, W);
 }
 
 std::vector<torch::Tensor> horder_backward(
@@ -38,10 +38,10 @@ std::vector<torch::Tensor> horder_backward(
   CHECK_INPUT(x);
   CHECK_INPUT(weights);
 
-  return lltm_cuda_backward(grad_Z, x, weights, k_size);
+  return horder_cuda_backward(grad_Z, x, weights, k_size);
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("forward", &lltm_forward, "High Order forward (CUDA)");
-  m.def("backward", &lltm_backward, "High Order backward (CUDA)");
+  m.def("forward", &horder_forward, "High Order forward (CUDA)");
+  m.def("backward", &horder_backward, "High Order backward (CUDA)");
 }

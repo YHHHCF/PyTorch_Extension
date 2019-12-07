@@ -5,7 +5,7 @@
 
 namespace {
   template <typename scalar_t>
-  __global__ void lltm_cuda_forward_kernel(
+  __global__ void horder_cuda_forward_kernel(
       torch::Tensor x,
       torch::Tensor weights,
       int H,
@@ -19,7 +19,7 @@ namespace {
   }
 
   template <typename scalar_t>
-  __global__ void lltm_cuda_backward_kernel(
+  __global__ void horder_cuda_backward_kernel(
       torch::Tensor grad_Z,
       torch::Tensor x,
       torch::Tensor weights,
@@ -43,7 +43,7 @@ torch::Tensor horder_cuda_forward(
 
   auto Z = torch::zeros_like(x);
   
-  lltm_cuda_forward_kernel<<<1, 1>>>(x, weights, H, W, Z);
+  horder_cuda_forward_kernel<<<1, 1>>>(x, weights, H, W, Z);
   return Z;
 }
 
@@ -62,6 +62,6 @@ std::vector<torch::Tensor> horder_cuda_backward(
   auto d_weights = torch::zeros_like(weights);  // (kernel_size^2, B, 1, H, W)
   
   // be careful here, x is already padded
-  lltm_cuda_backward_kernel<<<1, 1>>>(grad_Z, x, weights, k_size, d_x, d_weights);
+  horder_cuda_backward_kernel<<<1, 1>>>(grad_Z, x, weights, k_size, d_x, d_weights);
   return {d_x, d_weights};
 }
