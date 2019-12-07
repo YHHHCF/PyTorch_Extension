@@ -7,9 +7,9 @@ import torch
 import torch.nn as nn
 from tools.dataloader import *
 
-class HighOrderConv(nn.Module):
+class HighOrderFunction(nn.Module):
     def __init__(self):
-        super(HighOrderConv, self).__init__()
+        super(HighOrderFunction, self).__init__()
 
     def forward(self, x, filter):
         B, _, H, W = x.shape  # (B, C, H, W)
@@ -28,7 +28,7 @@ class HighOrderConv(nn.Module):
 class HighOrder(nn.Module):
     def __init__(self):
         super(HighOrder, self).__init__()
-        self.horder = HighOrderConv()
+        self.horder = HighOrderFunction()
         self.conv = nn.Conv2d(in_channels=3, out_channels=25, kernel_size=5, padding=2, stride=1)
 
     def forward(self, x):
