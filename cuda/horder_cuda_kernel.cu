@@ -25,7 +25,7 @@ namespace {
       torch::Tensor weights,
       int k_size,
       torch::Tensor d_x,
-      torch::Tensor d_weights,) {
+      torch::Tensor d_weights) {
 
     //batch index
     const int n = blockIdx.y;
