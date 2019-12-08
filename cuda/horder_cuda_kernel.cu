@@ -33,8 +33,8 @@ namespace {
         int idx_z = b * C * H * W + c * H * W + h * W + w;
 
         // sweep the area around (h, w)
-        for (int i = 0; i <= k_size; i++) {
-          for (int j = 0; j <= k_size; j++) {
+        for (int i = 0; i < k_size; i++) {
+          for (int j = 0; j < k_size; j++) {
             int px = h + i - 2;
             int py = w + j - 2;
             if (px >= 0 && px < H && py >= 0 && py < W) {
@@ -48,6 +48,10 @@ namespace {
         }
       }
     }
+
+    // if (h==0 && w==0) {
+    //   printf("Z gpu: %f\n", Z[0]);
+    // }
   }
 
   __global__ void horder_cuda_backward_kernel(
@@ -121,41 +125,43 @@ torch::Tensor horder_cuda_forward(
   auto Z = torch::zeros_like(x);  // (B, C, H, W)
   // x = at::constant_pad_nd(x, torch::IntList{2, 2, 2, 2}, 0);  // (B, C, H + 4, W + 4)
 
-  size_t size_Z = B * C * H * W * sizeof(float);
-  size_t size_x = B * C * H * W * sizeof(float);
-  size_t size_weights = k_size * k_size * B * H * W * sizeof(float);
+  // size_t size_Z = B * C * H * W * sizeof(float);
+  // size_t size_x = B * C * H * W * sizeof(float);
+  // size_t size_weights = k_size * k_size * B * H * W * sizeof(float);
 
-  float* device_Z;
-  float* device_x;
-  float* device_weights;
+  // float* device_Z;
+  // float* device_x;
+  // float* device_weights;
 
-  std::cout<<"debug 1"<<std::endl;
+  // std::cout<<"debug 1"<<std::endl;
 
-  cudaMalloc(&device_Z, size_Z);
-  cudaMalloc(&device_x, size_x);
-  cudaMalloc(&device_weights, size_weights);
+  // cudaMalloc(&device_Z, size_Z);
+  // cudaMalloc(&device_x, size_x);
+  // cudaMalloc(&device_weights, size_weights);
 
-  cudaMemcpy(device_Z, Z.data<float>(), size_Z, cudaMemcpyHostToDevice);
-  cudaMemcpy(device_x, x.data<float>(), size_x, cudaMemcpyHostToDevice);
-  cudaMemcpy(device_weights, weights.data<float>(), size_weights, cudaMemcpyHostToDevice);
+  // cudaMemcpy(device_Z, Z.data<float>(), size_Z, cudaMemcpyHostToDevice);
+  // cudaMemcpy(device_x, x.data<float>(), size_x, cudaMemcpyHostToDevice);
+  // cudaMemcpy(device_weights, weights.data<float>(), size_weights, cudaMemcpyHostToDevice);
 
-  std::cout<<"debug 2"<<std::endl;
+  // std::cout<<"debug 2"<<std::endl;
 
-  horder_cuda_forward_kernel<<<H, W>>>(device_Z,
-                                       device_x, device_weights,
+  horder_cuda_forward_kernel<<<H, W>>>(Z.data<float>(),
+                                      x.data<float>(), weights.data<float>(),
                                        B, C, H, W, k_size);
+  // auto tmp = Z;
+  // std::cout << Z << std::endl;
 
-  std::cout<<"debug 3"<<std::endl;
+  // std::cout<<"debug 3"<<std::endl;
 
-  cudaMemcpy(Z.data<float>(), device_Z, size_Z, cudaMemcpyDeviceToHost);
+  // // cudaMemcpy(Z.data<float>(), device_Z, size_Z, cudaMemcpyDeviceToHost);
 
-  std::cout<<"debug 4"<<std::endl;
+  // std::cout<<"debug 4"<<std::endl;
 
-  cudaFree(device_Z);
-  cudaFree(device_x);
-  cudaFree(device_weights);
+  // cudaFree(device_Z);
+  // cudaFree(device_x);
+  // cudaFree(device_weights);
 
-  std::cout<<"debug 5"<<std::endl;
+  // std::cout<<"debug 5"<<std::endl;
 
   return Z;
 }

@@ -35,6 +35,6 @@ class HighOrder(nn.Module):
         B, _, H, W = x.shape  # (B, C, H, W)
         weights = weights.reshape(B, -1, 1, H, W).transpose(0,1)  # (kernel_size^2, B, 1, H, W)
         x = self.horder(x, weights)
-        print(x)
+        # print(x)
         x += res
         return x
