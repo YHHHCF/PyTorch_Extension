@@ -5,16 +5,16 @@ from cuda.horder import HighOrderFunction as ho3
 
 def check_equals(v1, v2):
     if (v1.shape != v2.shape):
-        print("not equals")
+        print("shape not equals")
         return
 
     abs_diff = (v1 - v2).abs()
 
     print(v1)
     print(v2)
-    
+
     if (abs_diff.sum() > 1e-1):
-        print("not equals")
+        print("value not equals")
         return
 
     print("equals")
@@ -44,6 +44,11 @@ x3.to(device)
 weights2.to(device)
 weights3.to(device)
 
+# print("x")
+# print(x3)
+# print("weights")
+# print(weights3)
+
 # check forward pass
 # print(id(x2))
 # print(id(x3))
@@ -61,12 +66,6 @@ check_equals(out2, out3)
 # check backward pass
 out2.sum().backward()
 out3.sum().backward()
-
-x2.to(torch.device("cpu"))
-x3.to(torch.device("cpu"))
-
-print(x2.grad)
-print(x3.grad)
 
 check_equals(x2.grad, x3.grad)
 check_equals(weights2.grad, weights3.grad)
