@@ -4,46 +4,128 @@
 #include <vector>
 
 namespace {
-  template <typename scalar_t>
   __global__ void horder_cuda_forward_kernel(
-      torch::Tensor x,
-      torch::Tensor weights,
+      float* Z,  // (B, C, H, W)
+      float* x,  // (B, C, H+4, W+4)
+      float* weights,  // (k_size ^ 2, B, 1, H, W)
+      int B,
+      int C,
       int H,
       int W,
-      torch::Tensor Z) {
+      int k_size) {
+    // const int n = blockIdx.y;
+    // const int c = blockIdx.x * blockDim.x + threadIdx.x;
+    int i = blockIdx.x;
+    int j = threadIdx.x;
 
-    //batch index
-    const int n = blockIdx.y;
-    // column index
-    const int c = blockIdx.x * blockDim.x + threadIdx.x;
+    printf("thread: %d, %d\n", i, j);
+
+    int idx_weights = 0;
+
+    // for (int i = 0; i < k_size; i++) {
+    //   for (int j = 0; j < k_size; j++) {
+        int idx_z = 0;
+        int idx_x = i * (W + 4) + j;
+
+        for (int b = 0; b < B; b++) {
+          for (int c = 0; c < C; c++) {
+            for (int h = 0; h < H; h++) {
+              for (int w = 0; w < W; w++) {
+                // Z[b][c][h][w] += weights[i * k_size + j][b][0][h][w] * x[b][c][h+i][w+j]
+                Z[idx_z] += weights[idx_weights] * x[idx_x];
+                idx_z++;
+                idx_x++;
+                idx_weights++;
+              }
+              idx_z += W;
+              idx_x += (W + 4);
+              idx_weights += W;
+            }
+            idx_z += H * W;
+            idx_x += (H + 4) * (W + 4);
+            idx_weights += H * W;
+          }
+          idx_z += C * H * W;
+          idx_x += C * (H + 4) * (W + 4);
+          idx_weights += H * W;
+        }
+        idx_weights += B * H * W;
+    //   }
+    // }
   }
 
-  template <typename scalar_t>
   __global__ void horder_cuda_backward_kernel(
-      torch::Tensor grad_Z,
-      torch::Tensor x,
-      torch::Tensor weights,
-      int k_size,
-      torch::Tensor d_x,
-      torch::Tensor d_weights) {
+      float* d_x,  // (B, C, H + 4, W + 4)
+      float* d_weights,  // (kernel_size^2, B, 1, H, W)
+      float* grad_Z,  // (B, C, H, W)
+      float* x,  // (B, C, H + 4, W + 4)
+      float* weights,  // (kernel_size^2, B, 1, H, W)
+      int B,
+      int C,
+      int H,
+      int W,
+      int k_size) {
+    // const int n = blockIdx.y;
+    // const int c = blockIdx.x * blockDim.x + threadIdx.x;
 
-    //batch index
-    const int n = blockIdx.y;
-    // column index
-    const int c = blockIdx.x * blockDim.x + threadIdx.x;
-    
+    int i = blockIdx.x;
+    int j = threadIdx.x;
+
+    int idx_weights = 0;
+
+    // for (int i = 0; i < k_size; i++) {
+    //   for (int j = 0; j < k_size; j++) {
+        int idx_z = 0;
+        int idx_x = i * (W + 4) + j;
+
+        for (int b = 0; b < B; b++) {
+          for (int c = 0; c < C; c++) {
+            for (int h = 0; h < H; h++) {
+              for (int w = 0; w < W; w++) {
+                // d_x[b][c][h+i][w+j] += grad_Z[b][c][h][w] * weights[i * k_size + j][b][0][h][w]
+                d_x[idx_x] += grad_Z[idx_z] * weights[idx_weights];
+
+                // d_weights[i * k_size + j][b][0][h][w] += grad_Z[b][c][h][w] * x[b][c][h+i][w+j]
+                d_weights[idx_weights] += grad_Z[idx_z] * x[idx_x];
+
+                idx_z++;
+                idx_x++;
+                idx_weights++;
+              }
+              idx_z += W;
+              idx_x += (W + 4);
+              idx_weights += W;
+            }
+            idx_z += H * W;
+            idx_x += (H + 4) * (W + 4);
+            idx_weights += H * W;
+          }
+          idx_z += C * H * W;
+          idx_x += C * (H + 4) * (W + 4);
+          idx_weights += H * W;
+        }
+        idx_weights += B * H * W;
+    //   }
+    // }
   }
 } // namespace
 
 torch::Tensor horder_cuda_forward(
     torch::Tensor x,
     torch::Tensor weights,
-    int H,
-    int W) {
+    int k_size) {
 
-  auto Z = torch::zeros_like(x);
-  
-  horder_cuda_forward_kernel<<<1, 1>>>(x, weights, H, W, Z);
+  int B = at::size(x, 0);
+  int C = at::size(x, 1);
+  int H = at::size(x, 2);
+  int W = at::size(x, 3);
+
+  auto Z = torch::zeros_like(x);  // (B, C, H, W)
+  x = at::constant_pad_nd(x, torch::IntList{2, 2, 2, 2}, 0);  // (B, C, H + 4, W + 4)
+
+  horder_cuda_forward_kernel<<<5, 5>>>(Z.data<float>(),
+                                       x.data<float>(), weights.data<float>(),
+                                       B, C, H, W, k_size);
   return Z;
 }
 
@@ -53,15 +135,22 @@ std::vector<torch::Tensor> horder_cuda_backward(
     torch::Tensor weights,
     int k_size) {
 
+  int B = at::size(x, 0);
+  int C = at::size(x, 1);
   int H = at::size(x, 2);
   int W = at::size(x, 3);
 
   x = at::constant_pad_nd(x, torch::IntList{2, 2, 2, 2}, 0);  // (B, C, H + 4, W + 4)
-
   auto d_x = torch::zeros_like(x);  // (B, C, H + 4, W + 4)
   auto d_weights = torch::zeros_like(weights);  // (kernel_size^2, B, 1, H, W)
   
   // be careful here, x is already padded
-  horder_cuda_backward_kernel<<<1, 1>>>(grad_Z, x, weights, k_size, d_x, d_weights);
+  horder_cuda_backward_kernel<<<k_size, k_size>>>(d_x.data<float>(), d_weights.data<float>(),
+                                        grad_Z.data<float>(), x.data<float>(), weights.data<float>(),
+                                        B, C, H, W, k_size);
+
+  d_x = torch::slice(d_x, 2, 2, H + 2);
+  d_x = torch::slice(d_x, 3, 2, W + 2);  // (B, C, H, W)
+
   return {d_x, d_weights};
 }
