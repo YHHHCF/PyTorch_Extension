@@ -6,66 +6,68 @@ from cuda.horder import HighOrderFunction as ho3
 def check_equals(v1, v2):
     if (v1.shape != v2.shape):
         print("shape not equals")
-        return
+        return False
 
     abs_diff = (v1 - v2).abs()
+    abs_diff = (abs_diff > 1e-3)
 
-    print(v1)
-    print(v2)
-
-    if (abs_diff.sum() > 1e-1):
+    if (abs_diff.sum() > 0):
         print("value not equals")
-        return
-
-    print("equals")
-    return
+        return False
+    return True
 
 device = torch.device("cuda")
 
 # create input parameters(different instances) with same values
+torch.manual_seed(117)
 x1 = torch.randn((1, 3, 224, 224), requires_grad = True).to(device)
 weights1 = torch.randn((25, 1, 1, 224, 224), requires_grad = True).to(device)
 
-x2 = x1.clone().detach().requires_grad_(True).to(device)
-weights2 = weights1.clone().detach().requires_grad_(True).to(device)
+torch.manual_seed(117)
+x2 = torch.randn((1, 3, 224, 224), requires_grad = True).to(device)
+weights2 = torch.randn((25, 1, 1, 224, 224), requires_grad = True).to(device)
 
-x3 = x1.clone().detach().requires_grad_(True).to(device)
-weights3 = weights1.clone().detach().requires_grad_(True).to(device)
+torch.manual_seed(117)
+x3 = torch.randn((1, 3, 224, 224), requires_grad = True).to(device)
+weights3 = torch.randn((25, 1, 1, 224, 224), requires_grad = True).to(device)
+
+assert torch.all(torch.eq(x1, x2))
+assert torch.all(torch.eq(x1, x3))
+assert torch.all(torch.eq(weights1, weights2))
+assert torch.all(torch.eq(weights1, weights3))
+
+assert (id(x1) != id(x2))
+assert (id(x1) != id(x3))
+assert (id(x2) != id(x3))
+assert (id(weights1) != id(weights2))
+assert (id(weights1) != id(weights3))
+assert (id(weights2) != id(weights3))
 
 # create python and cpp models
-# model1 = ho1()
+model1 = ho1()
 model2 = ho2.apply
 model3 = ho3.apply
 
-# x1.to(device)
-x2.to(device)
-x3.to(device)
-# weights1.to(device)
-weights2.to(device)
-weights3.to(device)
-
-# print("x")
-# print(x3)
-# print("weights")
-# print(weights3)
-
 # check forward pass
-# print(id(x2))
-# print(id(x3))
-# check_equals(x2, x3)
 
-# print(id(weights2))
-# print(id(weights3))
-# check_equals(weights2, weights3)
-
+out1 = model1(x1, weights2)
 out2 = model2(x2, weights2)
 out3 = model3(x3, weights3)
 
-check_equals(out2, out3)
+print("Python vs Cpp, forward:", check_equals(out1, out2))
+print("Python vs Cuda, forward:", check_equals(out1, out3))
+
 
 # check backward pass
+out1.sum().backward()
 out2.sum().backward()
 out3.sum().backward()
 
-check_equals(x2.grad, x3.grad)
-check_equals(weights2.grad, weights3.grad)
+print(x1.grad)
+print(x2.grad)
+print(x3.grad)
+
+print(weights1.grad)
+print(weights2.grad)
+print(weights3.grad)
+

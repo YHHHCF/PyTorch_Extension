@@ -4,10 +4,11 @@
 #include <vector>
 
 namespace {
+  template <typename scalar_t>
   __global__ void horder_cuda_forward_kernel(
-      float* Z,  // (B, C, H, W)
-      float* x,  // (B, C, H, W)
-      float* weights,  // (k_size ^ 2, B, 1, H, W)
+      torch::PackedTensorAccessor<scalar_t,4,torch::RestrictPtrTraits,size_t> Z,  // (B, C, H, W)
+      torch::PackedTensorAccessor<scalar_t,4,torch::RestrictPtrTraits,size_t> x,  // (B, C, H, W)
+      torch::PackedTensorAccessor<scalar_t,5,torch::RestrictPtrTraits,size_t> weights,  // (k_size ^ 2, B, 1, H, W)
       int B,
       int C,
       int H,
@@ -19,14 +20,6 @@ namespace {
     int w = threadIdx.x;
 
     // printf("thread: %d, %d\n", i, j);
-
-    // if (h == 0 && w == 0) {
-    //   printf("1st number x: %f\n", x[0]);
-    //   printf("2nd number x: %f\n", x[1]);
-
-    //   printf("1st number w: %f\n", weights[0]);
-    //   printf("2nd number w: %f\n", weights[1]);
-    // }
 
     for (int b = 0; b < B; b++) {
       for (int c = 0; c < C; c++) {
@@ -41,17 +34,14 @@ namespace {
               int idx_x = b * C * H * W + c * H * W + px * W + py;
               int idx_weights = (i * k_size + j) * B * H * W + b * H * W + h * W + w;
 
-              // Z[b][c][h][w] += x[b][c][px][py] * weights[i, j][b][0][h][w]
-              Z[idx_z] += x[idx_x] + weights[idx_weights];
+              // pseudo code: Z[b][c][h][w] += x[b][c][px][py] * weights[i, j][b][0][h][w]
+              // Z[idx_z] += x[idx_x] + weights[idx_weights];
+              Z[b][c][h][w] += x[b][c][px][py] * weights[i * k_size + j][b][0][h][w];
             }
           }
         }
       }
     }
-
-    // if (h==0 && w==0) {
-    //   printf("Z gpu: %f\n", Z[0]);
-    // }
   }
 
   __global__ void horder_cuda_backward_kernel(
@@ -84,10 +74,10 @@ namespace {
           for (int c = 0; c < C; c++) {
             for (int h = 0; h < H; h++) {
               for (int w = 0; w < W; w++) {
-                // d_x[b][c][h+i][w+j] += grad_Z[b][c][h][w] * weights[i * k_size + j][b][0][h][w]
+                // pseudo code: d_x[b][c][h+i][w+j] += grad_Z[b][c][h][w] * weights[i * k_size + j][b][0][h][w]
                 d_x[idx_x] += grad_Z[idx_z] * weights[idx_weights];
 
-                // d_weights[i * k_size + j][b][0][h][w] += grad_Z[b][c][h][w] * x[b][c][h+i][w+j]
+                // pseudo code: d_weights[i * k_size + j][b][0][h][w] += grad_Z[b][c][h][w] * x[b][c][h+i][w+j]
                 d_weights[idx_weights] += grad_Z[idx_z] * x[idx_x];
 
                 idx_z++;
@@ -145,9 +135,18 @@ torch::Tensor horder_cuda_forward(
 
   // std::cout<<"debug 2"<<std::endl;
 
-  horder_cuda_forward_kernel<<<H, W>>>(Z.data<float>(),
-                                      x.data<float>(), weights.data<float>(),
-                                       B, C, H, W, k_size);
+  // horder_cuda_forward_kernel<<<H, W>>>(Z.data<float>(),
+  //                                     x.data<float>(), weights.data<float>(),
+  //                                      B, C, H, W, k_size);
+
+  AT_DISPATCH_FLOATING_TYPES(x.type(), "horder_forward_cuda", ([&] {
+    horder_cuda_forward_kernel<scalar_t><<<H, W>>>(
+        Z.packed_accessor<scalar_t,4,torch::RestrictPtrTraits,size_t>(),
+        x.packed_accessor<scalar_t,4,torch::RestrictPtrTraits,size_t>(),
+        weights.packed_accessor<scalar_t,5,torch::RestrictPtrTraits,size_t>(),
+        B, C, H, W, k_size);
+  }));
+
   // auto tmp = Z;
   // std::cout << Z << std::endl;
 
