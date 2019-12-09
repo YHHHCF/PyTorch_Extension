@@ -7,98 +7,72 @@ namespace {
   template <typename scalar_t>
   __global__ void horder_cuda_forward_kernel(
       torch::PackedTensorAccessor<scalar_t,4,torch::RestrictPtrTraits,size_t> Z,  // (B, C, H, W)
-      torch::PackedTensorAccessor<scalar_t,4,torch::RestrictPtrTraits,size_t> x,  // (B, C, H, W)
-      torch::PackedTensorAccessor<scalar_t,5,torch::RestrictPtrTraits,size_t> weights,  // (k_size ^ 2, B, 1, H, W)
-      int B,
-      int C,
-      int H,
-      int W,
-      int k_size) {
-    // const int n = blockIdx.y;
-    // const int c = blockIdx.x * blockDim.x + threadIdx.x;
+      const torch::PackedTensorAccessor<scalar_t,4,torch::RestrictPtrTraits,size_t> x,  // (B, C, H, W)
+      const torch::PackedTensorAccessor<scalar_t,5,torch::RestrictPtrTraits,size_t> weights,  // (k_size ^ 2, B, 1, H, W)
+      const int k_size) {
+
     int h = blockIdx.x;
     int w = threadIdx.x;
 
-    // printf("thread: %d, %d\n", i, j);
+    const int B = x.size(0);
+    const int C = x.size(1);
+    const int H = x.size(2);
+    const int W = x.size(3);
 
     for (int b = 0; b < B; b++) {
       for (int c = 0; c < C; c++) {
-        int idx_z = b * C * H * W + c * H * W + h * W + w;
-
         // sweep the area around (h, w)
-        for (int i = 0; i < k_size; i++) {
-          for (int j = 0; j < k_size; j++) {
-            int px = h + i - 2;
-            int py = w + j - 2;
-            if (px >= 0 && px < H && py >= 0 && py < W) {
-              int idx_x = b * C * H * W + c * H * W + px * W + py;
-              int idx_weights = (i * k_size + j) * B * H * W + b * H * W + h * W + w;
-
-              // pseudo code: Z[b][c][h][w] += x[b][c][px][py] * weights[i, j][b][0][h][w]
-              // Z[idx_z] += x[idx_x] + weights[idx_weights];
-              Z[b][c][h][w] += x[b][c][px][py] * weights[i * k_size + j][b][0][h][w];
-            }
+        for (int i = 0; i < k_size * k_size; i++) {
+          int px = h + int(i / k_size) - 2;
+          int py = w + int(i % k_size) - 2;
+          if (px >= 0 && px < H && py >= 0 && py < W) {
+            Z[b][c][h][w] += x[b][c][px][py] * weights[i][b][0][h][w];
           }
         }
       }
     }
+
   }
 
+  template <typename scalar_t>
   __global__ void horder_cuda_backward_kernel(
-      float* d_x,  // (B, C, H + 4, W + 4)
-      float* d_weights,  // (kernel_size^2, B, 1, H, W)
-      float* grad_Z,  // (B, C, H, W)
-      float* x,  // (B, C, H + 4, W + 4)
-      float* weights,  // (kernel_size^2, B, 1, H, W)
-      int B,
-      int C,
-      int H,
-      int W,
-      int k_size) {
-    // const int n = blockIdx.y;
-    // const int c = blockIdx.x * blockDim.x + threadIdx.x;
+      torch::PackedTensorAccessor<scalar_t,4,torch::RestrictPtrTraits,size_t> d_x,  // (B, C, H, W)
+      torch::PackedTensorAccessor<scalar_t,5,torch::RestrictPtrTraits,size_t> d_weights,  // (kernel_size^2, B, 1, H, W)
+      const torch::PackedTensorAccessor<scalar_t,4,torch::RestrictPtrTraits,size_t> grad_Z,  // (B, C, H, W)
+      const torch::PackedTensorAccessor<scalar_t,4,torch::RestrictPtrTraits,size_t> x,  // (B, C, H, W)
+      const torch::PackedTensorAccessor<scalar_t,5,torch::RestrictPtrTraits,size_t> weights,  // (kernel_size^2, B, 1, H, W)
+      const int k_size) {
 
-    printf("backward debug\n");
+    int h = blockIdx.x;
+    int w = threadIdx.x;
 
-    int i = blockIdx.x;
-    int j = threadIdx.x;
+    const int B = x.size(0);
+    const int C = x.size(1);
+    const int H = x.size(2);
+    const int W = x.size(3);
 
-    int idx_weights = 0;
+    for (int b = 0; b < B; b++) {
+      for (int c = 0; c < C; c++) {
+        // backprop through area at x affected by position i at weights
+        for (int i = 0; i < k_size * k_size; i++) {
+          int px = h + int(i / k_size) - 2;
+          int py = w + int(i % k_size) - 2;
+          int r_px = h + 2 - int(i / k_size);
+          int r_py = w + 2 - int(i % k_size);
 
-    // for (int i = 0; i < k_size; i++) {
-    //   for (int j = 0; j < k_size; j++) {
-        int idx_z = 0;
-        int idx_x = i * (W + 4) + j;
-
-        for (int b = 0; b < B; b++) {
-          for (int c = 0; c < C; c++) {
-            for (int h = 0; h < H; h++) {
-              for (int w = 0; w < W; w++) {
-                // pseudo code: d_x[b][c][h+i][w+j] += grad_Z[b][c][h][w] * weights[i * k_size + j][b][0][h][w]
-                d_x[idx_x] += grad_Z[idx_z] * weights[idx_weights];
-
-                // pseudo code: d_weights[i * k_size + j][b][0][h][w] += grad_Z[b][c][h][w] * x[b][c][h+i][w+j]
-                d_weights[idx_weights] += grad_Z[idx_z] * x[idx_x];
-
-                idx_z++;
-                idx_x++;
-                idx_weights++;
-              }
-              idx_z += W;
-              idx_x += (W + 4);
-              idx_weights += W;
-            }
-            idx_z += H * W;
-            idx_x += (H + 4) * (W + 4);
-            idx_weights += H * W;
+          if (px >= 0 && px < H && py >= 0 && py < W) {
+            // the next formula is correct but has race
+            // d_x[b][c][px][py] += grad_Z[b][c][h][w] * weights[i][b][0][h][w];
+            d_weights[i][b][0][h][w] += grad_Z[b][c][h][w] * x[b][c][px][py];
           }
-          idx_z += C * H * W;
-          idx_x += C * (H + 4) * (W + 4);
-          idx_weights += H * W;
+
+          if (r_px >= 0 && r_px < H && r_py >= 0 && r_py < W) {
+            d_x[b][c][h][w] += grad_Z[b][c][r_px][r_py] * weights[i][b][0][r_px][r_py];
+          }
         }
-        idx_weights += B * H * W;
-    //   }
-    // }
+      }
+    }
+
   }
 } // namespace
 
@@ -107,60 +81,17 @@ torch::Tensor horder_cuda_forward(
     torch::Tensor weights,
     int k_size) {
 
-  int B = at::size(x, 0);
-  int C = at::size(x, 1);
-  int H = at::size(x, 2);
-  int W = at::size(x, 3);
-
   auto Z = torch::zeros_like(x);  // (B, C, H, W)
-  // x = at::constant_pad_nd(x, torch::IntList{2, 2, 2, 2}, 0);  // (B, C, H + 4, W + 4)
-
-  // size_t size_Z = B * C * H * W * sizeof(float);
-  // size_t size_x = B * C * H * W * sizeof(float);
-  // size_t size_weights = k_size * k_size * B * H * W * sizeof(float);
-
-  // float* device_Z;
-  // float* device_x;
-  // float* device_weights;
-
-  // std::cout<<"debug 1"<<std::endl;
-
-  // cudaMalloc(&device_Z, size_Z);
-  // cudaMalloc(&device_x, size_x);
-  // cudaMalloc(&device_weights, size_weights);
-
-  // cudaMemcpy(device_Z, Z.data<float>(), size_Z, cudaMemcpyHostToDevice);
-  // cudaMemcpy(device_x, x.data<float>(), size_x, cudaMemcpyHostToDevice);
-  // cudaMemcpy(device_weights, weights.data<float>(), size_weights, cudaMemcpyHostToDevice);
-
-  // std::cout<<"debug 2"<<std::endl;
-
-  // horder_cuda_forward_kernel<<<H, W>>>(Z.data<float>(),
-  //                                     x.data<float>(), weights.data<float>(),
-  //                                      B, C, H, W, k_size);
+  const int H = at::size(x, 2);
+  const int W = at::size(x, 3);
 
   AT_DISPATCH_FLOATING_TYPES(x.type(), "horder_forward_cuda", ([&] {
     horder_cuda_forward_kernel<scalar_t><<<H, W>>>(
         Z.packed_accessor<scalar_t,4,torch::RestrictPtrTraits,size_t>(),
         x.packed_accessor<scalar_t,4,torch::RestrictPtrTraits,size_t>(),
         weights.packed_accessor<scalar_t,5,torch::RestrictPtrTraits,size_t>(),
-        B, C, H, W, k_size);
+        k_size);
   }));
-
-  // auto tmp = Z;
-  // std::cout << Z << std::endl;
-
-  // std::cout<<"debug 3"<<std::endl;
-
-  // // cudaMemcpy(Z.data<float>(), device_Z, size_Z, cudaMemcpyDeviceToHost);
-
-  // std::cout<<"debug 4"<<std::endl;
-
-  // cudaFree(device_Z);
-  // cudaFree(device_x);
-  // cudaFree(device_weights);
-
-  // std::cout<<"debug 5"<<std::endl;
 
   return Z;
 }
@@ -171,22 +102,28 @@ std::vector<torch::Tensor> horder_cuda_backward(
     torch::Tensor weights,
     int k_size) {
 
-  int B = at::size(x, 0);
-  int C = at::size(x, 1);
-  int H = at::size(x, 2);
-  int W = at::size(x, 3);
+  const int H = at::size(x, 2);
+  const int W = at::size(x, 3);
 
-  x = at::constant_pad_nd(x, torch::IntList{2, 2, 2, 2}, 0);  // (B, C, H + 4, W + 4)
-  auto d_x = torch::zeros_like(x);  // (B, C, H + 4, W + 4)
+  auto d_x = torch::zeros_like(x);  // (B, C, H, W)
   auto d_weights = torch::zeros_like(weights);  // (kernel_size^2, B, 1, H, W)
-  
-  // be careful here, x is already padded
-  horder_cuda_backward_kernel<<<k_size, k_size>>>(d_x.data<float>(), d_weights.data<float>(),
-                                        grad_Z.data<float>(), x.data<float>(), weights.data<float>(),
-                                        B, C, H, W, k_size);
 
-  d_x = torch::slice(d_x, 2, 2, H + 2);
-  d_x = torch::slice(d_x, 3, 2, W + 2);  // (B, C, H, W)
+  // AT_DISPATCH_FLOATING_TYPES is an aten host function which launches kernel function
+  // argument 1: x.type() specifies the tensor type in kernel function inputs
+  // argument 2: a string to describe what this function does, for debug
+  // argument 3: an anonymous function which calls the kernel function
+  AT_DISPATCH_FLOATING_TYPES(x.type(), "horder_backward_cuda", ([&] {
+    horder_cuda_backward_kernel<scalar_t><<<H, W>>>(
+        // packed_accessor is a function that transfers a tensor from/to host to/from device
+        // argument 1: scalar_t is they data element type of the tensor
+        // argument 2: #dim of the tensor
+        d_x.packed_accessor<scalar_t,4,torch::RestrictPtrTraits,size_t>(),
+        d_weights.packed_accessor<scalar_t,5,torch::RestrictPtrTraits,size_t>(),
+        grad_Z.packed_accessor<scalar_t,4,torch::RestrictPtrTraits,size_t>(),
+        x.packed_accessor<scalar_t,4,torch::RestrictPtrTraits,size_t>(),
+        weights.packed_accessor<scalar_t,5,torch::RestrictPtrTraits,size_t>(),
+        k_size);
+  }));
 
   return {d_x, d_weights};
 }

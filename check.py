@@ -5,31 +5,33 @@ from cuda.horder import HighOrderFunction as ho3
 
 def check_equals(v1, v2):
     if (v1.shape != v2.shape):
-        print("shape not equals")
-        return False
+        return "incorrect, shape not equals"
 
     abs_diff = (v1 - v2).abs()
-    abs_diff = (abs_diff > 1e-3)
 
-    if (abs_diff.sum() > 0):
-        print("value not equals")
-        return False
-    return True
+    if (torch.max(abs_diff) > 1e-3):
+        return "incorrect, value not equals"
+
+    return "correct"
 
 device = torch.device("cuda")
+side = 256
+k_size = 7
+c_size = 3
+b_size = 16
 
 # create input parameters(different instances) with same values
 torch.manual_seed(117)
-x1 = torch.randn((1, 3, 224, 224), requires_grad = True).to(device)
-weights1 = torch.randn((25, 1, 1, 224, 224), requires_grad = True).to(device)
+x1 = torch.randn((b_size, c_size, side, side), device=device, requires_grad=True)
+weights1 = torch.randn((k_size * k_size, b_size, 1, side, side), device=device, requires_grad=True)
 
 torch.manual_seed(117)
-x2 = torch.randn((1, 3, 224, 224), requires_grad = True).to(device)
-weights2 = torch.randn((25, 1, 1, 224, 224), requires_grad = True).to(device)
+x2 = torch.randn((b_size, c_size, side, side), device=device, requires_grad=True)
+weights2 = torch.randn((k_size * k_size, b_size, 1, side, side), device=device, requires_grad=True)
 
 torch.manual_seed(117)
-x3 = torch.randn((1, 3, 224, 224), requires_grad = True).to(device)
-weights3 = torch.randn((25, 1, 1, 224, 224), requires_grad = True).to(device)
+x3 = torch.randn((b_size, c_size, side, side), device=device, requires_grad=True)
+weights3 = torch.randn((k_size * k_size, b_size, 1, side, side), device=device, requires_grad=True)
 
 assert torch.all(torch.eq(x1, x2))
 assert torch.all(torch.eq(x1, x3))
@@ -49,25 +51,21 @@ model2 = ho2.apply
 model3 = ho3.apply
 
 # check forward pass
-
-out1 = model1(x1, weights2)
+out1 = model1(x1, weights1)
 out2 = model2(x2, weights2)
 out3 = model3(x3, weights3)
 
 print("Python vs Cpp, forward:", check_equals(out1, out2))
 print("Python vs Cuda, forward:", check_equals(out1, out3))
 
-
 # check backward pass
 out1.sum().backward()
 out2.sum().backward()
 out3.sum().backward()
 
-print(x1.grad)
-print(x2.grad)
-print(x3.grad)
+# grad is only avaible when the model and data is on CPU
+print("Python vs Cpp, backward x:", check_equals(x1.grad, x2.grad))
+print("Python vs Cuda, backward x:", check_equals(x1.grad, x3.grad))
 
-print(weights1.grad)
-print(weights2.grad)
-print(weights3.grad)
-
+print("Python vs Cpp, backward weights:", check_equals(weights1.grad, weights2.grad))
+print("Python vs Cuda, backward weights:", check_equals(weights1.grad, weights3.grad))

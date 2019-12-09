@@ -7,35 +7,39 @@ import torch
 TIME_SCALES = {'s': 1, 'ms': 1000, 'us': 1000000}
 
 parser = argparse.ArgumentParser()
-parser.add_argument('example', choices=['py', 'cpp', 'cuda'])
+parser.add_argument('language', choices=['py', 'cpp', 'cuda'])
+parser.add_argument('device', choices=['cpu', 'gpu'])
 
 options = parser.parse_args()
 
-if options.example == 'py':
+if options.language == 'py':
     from python.horder import HighOrder
-elif options.example == 'cpp':
+elif options.language == 'cpp':
     from cpp.horder import HighOrder
 else:
     from cuda.horder import HighOrder
     options.cuda = True
 
-# device = torch.device("cuda")
-device = torch.device("cuda")
+if options.device == 'cpu':
+    device = torch.device("cpu")
+else:
+    device = torch.device("cuda")
+
 dtype = torch.float32
 
-kwargs = {'dtype': dtype,
+kwargs = {'dtype': torch.float32,
           'device': device,
           'requires_grad': True}
 
 # path for real data
 path = "../data/img_dict.npy"
-batch_size = 2
-num_workers = 1
-runs = 10
+batch_size = 32
+num_workers = 8
+runs = 5
 scale_name = 'ms'
 
 # fake(random initialized data)
-X = torch.randn(batch_size, 3, 224, 224).to(device)
+X = torch.randn((batch_size, 3, 224, 224), device=device, requires_grad=True)
 model = HighOrder().to(device, dtype)
 
 # force initialization
