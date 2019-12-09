@@ -33,13 +33,15 @@ kwargs = {'dtype': torch.float32,
 
 # path for real data
 path = "../data/img_dict.npy"
-batch_size = 32
+batch_size = 2
 num_workers = 8
+H = 224
+W = 224
 runs = 5
 scale_name = 'ms'
 
 # fake(random initialized data)
-X = torch.randn((batch_size, 3, 224, 224), device=device, requires_grad=True)
+X = torch.randn((batch_size, 3, H, W), device=device, requires_grad=True)
 model = HighOrder().to(device, dtype)
 
 # force initialization
@@ -72,7 +74,7 @@ backward_min *= scale
 forward_average = forward_time / runs * scale
 backward_average = backward_time / runs * scale
 
-print('Forward: {0:.1f}/{1:.1f} {4} | Backward {2:.1f}/{3:.1f} {4}'.format(
+print('Forward: {0:.2f}/{1:.2f} {4} | Backward {2:.2f}/{3:.2f} {4}'.format(
     forward_min, forward_average, backward_min, backward_average,
     scale_name))
 

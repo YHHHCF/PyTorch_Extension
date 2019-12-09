@@ -10,12 +10,13 @@ def check_equals(v1, v2):
     abs_diff = (v1 - v2).abs()
 
     if (torch.max(abs_diff) > 1e-3):
+        print(abs_diff)
         return "incorrect, value not equals"
 
     return "correct"
 
 device = torch.device("cuda")
-side = 256
+side = 16
 k_size = 7
 c_size = 3
 b_size = 16

@@ -101,7 +101,6 @@ std::vector<torch::Tensor> horder_cuda_backward(
     torch::Tensor x,
     torch::Tensor weights,
     int k_size) {
-
   const int H = at::size(x, 2);
   const int W = at::size(x, 3);
 
