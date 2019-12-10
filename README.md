@@ -2,7 +2,7 @@ I implemented a 2D high order convolution module which runs 3-5 times faster tha
 I'm referring to [this](https://github.com/pytorch/extension-cpp/tree/master/cuda) git repo by [Peter Goldsborough](https://github.com/goldsborough).
 
 
-python/ folder contains the original high order convolution model built on PyTorch extension (nn.Module)
+python/(python/) folder contains the original high order convolution model built on PyTorch extension (nn.Module)
 cpp/ folder contains a python wrapper and uses c++ to implement the critical part of the high order convolution model
 cuda/ folder contains a python wrapper and a c++ wrapper and uses CUDA to implement the critical part of the high order convolution model
 tools/ folder are reference data preprocessing tools and dataloaders for users who want to use real data to run the module
