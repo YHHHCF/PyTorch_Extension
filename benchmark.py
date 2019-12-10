@@ -33,7 +33,7 @@ kwargs = {'dtype': torch.float32,
 
 # path for real data
 path = "../data/img_dict.npy"
-batch_size = 2
+batch_size = 64
 num_workers = 8
 H = 224
 W = 224
@@ -77,4 +77,3 @@ backward_average = backward_time / runs * scale
 print('Forward: {0:.2f}/{1:.2f} {4} | Backward {2:.2f}/{3:.2f} {4}'.format(
     forward_min, forward_average, backward_min, backward_average,
     scale_name))
-
