@@ -10,7 +10,7 @@ I implemented a 2D high order convolution module which runs 3-5 times faster tha
 
 [tools/](https://github.com/YHHHCF/PyTorch_Extension/tree/master/tools) folder are reference data preprocessing tools and dataloaders for users who want to use real data to run the module  
 
-# All the operations you might want to know are as follows:  
+# Commands  
 
 1. To run Python extension  
 python benchmark.py py cpu  
