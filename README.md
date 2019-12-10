@@ -34,5 +34,5 @@ python benchmark.py cuda gpu
 4. To run all of the experiments  
 ./run.sh  
 
-5. To check the correctness of C++ and CUDA extension, we use Python extension as ground truth:  
+5. To check the correctness of C++ and CUDA extension, we use Python extension as ground truth (note that we implement Python extension using PyTorch's nn.module, which only requires the implementation of forward pass and the backprop is implemented automatically):  
 python check.py  
