@@ -2,14 +2,15 @@ I implemented a 2D high order convolution module which runs 3-5 times faster tha
 I'm referring to [this](https://github.com/pytorch/extension-cpp/tree/master/cuda) git repo by [Peter Goldsborough](https://github.com/goldsborough).  
 
 
-python/(https://github.com/YHHHCF/PyTorch_Extension/tree/master/python) folder contains the original high order convolution model built on PyTorch extension (nn.Module)  
+[python/](https://github.com/YHHHCF/PyTorch_Extension/tree/master/python) folder contains the original high order convolution model built on PyTorch extension (nn.Module)  
 
-cpp/(https://github.com/YHHHCF/PyTorch_Extension/tree/master/cpp) folder contains a python wrapper and uses c++ to implement the critical part of the high order convolution model  
+[cpp/](https://github.com/YHHHCF/PyTorch_Extension/tree/master/cpp) folder contains a python wrapper and uses c++ to implement the critical part of the high order convolution model  
 
-cuda/(https://github.com/YHHHCF/PyTorch_Extension/tree/master/cuda) folder contains a python wrapper and a c++ wrapper and uses CUDA to implement the critical part of the high order convolution model  
+[cuda/](https://github.com/YHHHCF/PyTorch_Extension/tree/master/cuda) folder contains a python wrapper and a c++ wrapper and uses CUDA to implement the critical part of the high order convolution model  
 
-tools/(https://github.com/YHHHCF/PyTorch_Extension/tree/master/tools) folder are reference data preprocessing tools and dataloaders for users who want to use real data to run the module  
+[tools/](https://github.com/YHHHCF/PyTorch_Extension/tree/master/tools) folder are reference data preprocessing tools and dataloaders for users who want to use real data to run the module  
 
+All the operations you might want to know are as follows:  
 
 1. To run Python extension
 python benchmark.py py cpu
