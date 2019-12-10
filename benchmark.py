@@ -33,7 +33,7 @@ kwargs = {'dtype': torch.float32,
 
 # path for real data
 path = "../data/img_dict.npy"
-batch_size = 128
+batch_size = 16
 num_workers = 8
 H = 224
 W = 224

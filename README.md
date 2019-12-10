@@ -1,6 +1,6 @@
-I implemented a 2D high order convolution module which runs 3-5 times faster than PyTorch Python extension on CPU and over 100 times faster than PyTorch Python extension on GPU.  
+I implemented a 2D high order convolution module which runs 3-5 times faster than PyTorch Python extension on CPU and hundreds of times faster than PyTorch Python extension on GPU when input size is large.  
 
-I'm referring to [this](https://github.com/pytorch/extension-cpp/tree/master/cuda) git repo by [Peter Goldsborough](https://github.com/goldsborough).  
+I'm referring to [this](https://github.com/pytorch/extension-cpp/tree/master/) git repo by [Peter Goldsborough](https://github.com/goldsborough). The project architecture is similar whereas the module and algorithm is quite different.  
 
 
 [python/](https://github.com/YHHHCF/PyTorch_Extension/tree/master/python) folder contains the original high order convolution model built on PyTorch extension (nn.Module)  
@@ -36,3 +36,4 @@ python benchmark.py cuda gpu
 
 5. To check the correctness of C++ and CUDA extension, we use Python extension as ground truth (note that we implement Python extension using PyTorch's nn.module, which only requires the implementation of forward pass and the backprop is implemented automatically):  
 python check.py  
+
