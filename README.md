@@ -1,5 +1,5 @@
 # High Order convolution module implemented in PyTorch C++ and CUDA extension
-I implemented a 2D high order convolution module which runs 3-5 times faster than PyTorch Python extension on CPU and hundreds of times faster than PyTorch Python extension on GPU when input size is large.  
+I implemented a 2D high order convolution module (similar to 1D high order module specified in [this paper](https://openreview.net/pdf?id=SkVhlh09tX)) which runs 3-5 times faster than PyTorch Python extension on CPU and hundreds of times faster than PyTorch Python extension on GPU when input size is large.  
 
 # Description
 [python/](https://github.com/YHHHCF/PyTorch_Extension/tree/master/python) folder contains the original high order convolution model built on PyTorch extension (nn.Module)  
@@ -37,7 +37,8 @@ python benchmark.py cuda gpu
 python check.py  
 
 # Author
-[Zhejin Huang](https://www.linkedin.com/in/zhejinh/)
+[Zhejin Huang](https://www.linkedin.com/in/zhejinh/)  
+Please refer if you use this repo.  
 
 # Reference
 I'm referring to [this](https://github.com/pytorch/extension-cpp/tree/master/) git repo by [Peter Goldsborough](https://github.com/goldsborough). The project architecture is similar whereas the module and algorithm is quite different.  
