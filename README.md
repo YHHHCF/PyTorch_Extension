@@ -10,6 +10,11 @@ I implemented a 2D high order convolution module (similar to 1D high order modul
 
 [tools/](https://github.com/YHHHCF/PyTorch_Extension/tree/master/tools) folder are reference data preprocessing tools and dataloaders for users who want to use real data to run the module  
 
+# Requirements
+Python
+PyTorch
+CUDA
+
 # Commands  
 
 1. To run Python extension  
@@ -27,7 +32,6 @@ python benchmark.py cpp gpu
 cd cuda/  
 python setup.py install  
 cd ..  
-python benchmark.py cuda cpu  
 python benchmark.py cuda gpu  
 
 4. To run all of the experiments  
